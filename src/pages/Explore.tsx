@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Search as SearchIcon } from "lucide-react";
+import { Search as SearchIcon, UserPlus, UserCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import AppLayout from "@/components/layout/AppLayout";
 
 const Explore = () => {
@@ -9,9 +11,24 @@ const Explore = () => {
   const [results, setResults] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [toggling, setToggling] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchExplorePosts = async () => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+
+      if (user) {
+        const { data: follows } = await supabase
+          .from("followers")
+          .select("following_id")
+          .eq("follower_id", user.id)
+          .eq("status", "accepted");
+        setFollowingIds(new Set((follows || []).map((f) => f.following_id)));
+      }
+
       const { data } = await supabase
         .from("posts")
         .select("id, media_urls, likes_count, media_type")
@@ -20,7 +37,7 @@ const Explore = () => {
       setPosts(data || []);
       setLoading(false);
     };
-    fetchExplorePosts();
+    init();
   }, []);
 
   useEffect(() => {
@@ -39,6 +56,36 @@ const Explore = () => {
     const timer = setTimeout(search, 300);
     return () => clearTimeout(timer);
   }, [query]);
+
+  const toggleFollow = async (targetId: string) => {
+    if (!currentUserId || targetId === currentUserId) return;
+    setToggling(targetId);
+
+    const isFollowing = followingIds.has(targetId);
+
+    if (isFollowing) {
+      await supabase
+        .from("followers")
+        .delete()
+        .eq("follower_id", currentUserId)
+        .eq("following_id", targetId);
+      setFollowingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(targetId);
+        return next;
+      });
+      toast.success("Deixou de seguir");
+    } else {
+      await supabase.from("followers").insert({
+        follower_id: currentUserId,
+        following_id: targetId,
+        status: "accepted",
+      });
+      setFollowingIds((prev) => new Set(prev).add(targetId));
+      toast.success("Seguindo!");
+    }
+    setToggling(null);
+  };
 
   return (
     <AppLayout>
@@ -67,12 +114,27 @@ const Explore = () => {
                   </div>
                 )}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold truncate">{user.username}</p>
                 {user.display_name && (
                   <p className="text-xs text-muted-foreground truncate">{user.display_name}</p>
                 )}
               </div>
+              {currentUserId && user.id !== currentUserId && (
+                <Button
+                  size="sm"
+                  variant={followingIds.has(user.id) ? "secondary" : "brand"}
+                  disabled={toggling === user.id}
+                  onClick={() => toggleFollow(user.id)}
+                  className="gap-1.5 text-xs"
+                >
+                  {followingIds.has(user.id) ? (
+                    <><UserCheck className="h-3.5 w-3.5" /> Seguindo</>
+                  ) : (
+                    <><UserPlus className="h-3.5 w-3.5" /> Seguir</>
+                  )}
+                </Button>
+              )}
             </div>
           ))}
           {results.length === 0 && (
