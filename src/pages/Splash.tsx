@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Camera } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Splash = () => {
   const navigate = useNavigate();
@@ -10,9 +10,7 @@ const Splash = () => {
       <div />
 
       <div className="flex flex-col items-center gap-6 animate-fade-in">
-        <div className="gradient-brand rounded-2xl p-4 glow">
-          <Camera className="h-12 w-12 text-primary-foreground" />
-        </div>
+        <img src={logo} alt="JPvano" className="h-24 w-24 rounded-2xl glow" />
         <h1 className="font-display text-4xl font-bold tracking-tight">
           <span className="gradient-text">JPvano</span>
         </h1>
