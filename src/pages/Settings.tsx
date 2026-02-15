@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/layout/AppLayout";
 
 const settingsItems = [
-  { icon: User, label: "Editar perfil", path: "/profile" },
+  { icon: User, label: "Editar perfil", path: "/edit-profile" },
   { icon: Bell, label: "Notificações", path: "/notifications" },
   { icon: Shield, label: "Privacidade", path: "#" },
   { icon: Lock, label: "Segurança", path: "#" },
