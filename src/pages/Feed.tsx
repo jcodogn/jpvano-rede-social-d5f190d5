@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/layout/AppLayout";
 import StoriesBar from "@/components/feed/StoriesBar";
@@ -11,11 +12,30 @@ const Feed = () => {
 
   useEffect(() => {
     const fetchPosts = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Get IDs the user follows
+      const { data: follows } = await supabase
+        .from("followers")
+        .select("following_id")
+        .eq("follower_id", user.id)
+        .eq("status", "accepted");
+
+      const followingIds = (follows || []).map((f) => f.following_id);
+      // Include user's own posts
+      const ids = [...followingIds, user.id];
+
       const { data } = await supabase
         .from("posts")
         .select("*, profiles(username, avatar_url, display_name)")
+        .in("user_id", ids)
         .order("created_at", { ascending: false })
         .limit(50);
+
       setPosts(data || []);
       setLoading(false);
     };
@@ -49,5 +69,4 @@ const Feed = () => {
   );
 };
 
-import { Camera } from "lucide-react";
 export default Feed;
