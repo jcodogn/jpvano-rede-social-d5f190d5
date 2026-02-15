@@ -104,7 +104,7 @@ const Profile = () => {
         </div>
 
         <div className="mt-4 flex gap-2">
-          <Button variant="secondary" size="sm" className="flex-1">Editar perfil</Button>
+          <Button variant="secondary" size="sm" className="flex-1" onClick={() => navigate("/edit-profile")}>Editar perfil</Button>
           <Button variant="secondary" size="sm" onClick={handleLogout}>Sair</Button>
         </div>
       </div>
