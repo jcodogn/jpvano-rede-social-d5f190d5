@@ -14,7 +14,7 @@ const Splash = () => {
           <Camera className="h-12 w-12 text-primary-foreground" />
         </div>
         <h1 className="font-display text-4xl font-bold tracking-tight">
-          <span className="gradient-text">Vibe</span>
+          <span className="gradient-text">JPvano</span>
         </h1>
         <p className="max-w-[260px] text-center text-sm text-muted-foreground leading-relaxed">
           Compartilhe momentos, conecte-se com pessoas e descubra o que está acontecendo.
