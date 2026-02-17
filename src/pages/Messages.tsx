@@ -1,18 +1,20 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Send, Search } from "lucide-react";
+import { ArrowLeft, Edit, Send, Search, Mic, Square, Play, Pause } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 
 interface Conversation {
   id: string;
   otherUser: { id: string; username: string; display_name: string | null; avatar_url: string | null };
   lastMessage?: string;
   lastMessageAt?: string;
+  lastMessageType?: string;
   unread: boolean;
 }
 
@@ -21,10 +23,56 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
+  message_type: string;
+  media_url: string | null;
 }
+
+const AudioPlayer = ({ url }: { url: string }) => {
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [current, setCurrent] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    audio.addEventListener("loadedmetadata", () => setDuration(audio.duration));
+    audio.addEventListener("timeupdate", () => setCurrent(audio.currentTime));
+    audio.addEventListener("ended", () => { setPlaying(false); setCurrent(0); });
+    return () => { audio.pause(); audio.src = ""; };
+  }, [url]);
+
+  const toggle = () => {
+    if (!audioRef.current) return;
+    if (playing) { audioRef.current.pause(); } else { audioRef.current.play(); }
+    setPlaying(!playing);
+  };
+
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="flex items-center gap-2 min-w-[140px]">
+      <button onClick={toggle} className="shrink-0">
+        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </button>
+      <div className="flex-1 h-1 bg-current/20 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-current rounded-full transition-all"
+          style={{ width: duration ? `${(current / duration) * 100}%` : "0%" }}
+        />
+      </div>
+      <span className="text-[10px] tabular-nums shrink-0">{fmt(current || duration)}</span>
+    </div>
+  );
+};
 
 const Messages = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvo, setActiveConvo] = useState<Conversation | null>(null);
@@ -37,11 +85,17 @@ const Messages = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Audio recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Load current user and conversations
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -53,8 +107,20 @@ const Messages = () => {
     init();
   }, []);
 
+  // Handle opening a conversation from UserProfile navigation
+  useEffect(() => {
+    const state = location.state as { openConvoWith?: string } | null;
+    if (state?.openConvoWith && currentUserId && conversations.length > 0) {
+      const existing = conversations.find((c) => c.otherUser.id === state.openConvoWith);
+      if (existing) {
+        setActiveConvo(existing);
+        // Clear the state
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [location.state, currentUserId, conversations]);
+
   const loadConversations = async (userId: string) => {
-    // Get conversations the user participates in
     const { data: participations } = await supabase
       .from("conversation_participants")
       .select("conversation_id")
@@ -67,7 +133,6 @@ const Messages = () => {
 
     const convoIds = participations.map((p) => p.conversation_id);
 
-    // Get other participants
     const { data: allParticipants } = await supabase
       .from("conversation_participants")
       .select("conversation_id, user_id")
@@ -78,7 +143,6 @@ const Messages = () => {
 
     const otherUserIds = [...new Set(allParticipants.map((p) => p.user_id))];
 
-    // Get profiles
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, username, display_name, avatar_url")
@@ -86,10 +150,9 @@ const Messages = () => {
 
     const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
 
-    // Get latest message per conversation
     const { data: latestMessages } = await supabase
       .from("messages")
-      .select("conversation_id, content, created_at, sender_id, is_read")
+      .select("conversation_id, content, created_at, sender_id, is_read, message_type")
       .in("conversation_id", convoIds)
       .order("created_at", { ascending: false });
 
@@ -108,8 +171,9 @@ const Messages = () => {
       convos.push({
         id: p.conversation_id,
         otherUser: profile,
-        lastMessage: latest?.content,
+        lastMessage: latest?.message_type === "audio" ? "🎤 Áudio" : latest?.content,
         lastMessageAt: latest?.created_at,
+        lastMessageType: latest?.message_type,
         unread: latest ? !latest.is_read && latest.sender_id !== userId : false,
       });
     }
@@ -123,14 +187,13 @@ const Messages = () => {
     setConversations(convos);
   };
 
-  // Load messages for active conversation
   useEffect(() => {
     if (!activeConvo) return;
 
     const loadMessages = async () => {
       const { data } = await supabase
         .from("messages")
-        .select("id, content, sender_id, created_at")
+        .select("id, content, sender_id, created_at, message_type, media_url")
         .eq("conversation_id", activeConvo.id)
         .order("created_at", { ascending: true })
         .limit(200);
@@ -139,7 +202,6 @@ const Messages = () => {
     };
     loadMessages();
 
-    // Real-time subscription
     const channel = supabase
       .channel(`chat-${activeConvo.id}`)
       .on(
@@ -166,7 +228,6 @@ const Messages = () => {
     };
   }, [activeConvo]);
 
-  // Search users for new chat
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -187,7 +248,6 @@ const Messages = () => {
   const startConversation = async (targetUserId: string, targetProfile: any) => {
     if (!currentUserId) return;
 
-    // Check if conversation already exists
     const existing = conversations.find((c) => c.otherUser.id === targetUserId);
     if (existing) {
       setActiveConvo(existing);
@@ -196,7 +256,6 @@ const Messages = () => {
       return;
     }
 
-    // Create new conversation
     const { data: convo, error } = await supabase
       .from("conversations")
       .insert({})
@@ -205,7 +264,6 @@ const Messages = () => {
 
     if (error || !convo) return;
 
-    // Add both participants
     await supabase.from("conversation_participants").insert([
       { conversation_id: convo.id, user_id: currentUserId },
       { conversation_id: convo.id, user_id: targetUserId },
@@ -227,7 +285,7 @@ const Messages = () => {
     if (!newMessage.trim() || !activeConvo || !currentUserId || sending) return;
     const content = newMessage.trim();
     if (content.length > 2000) return;
-    
+
     setSending(true);
     setNewMessage("");
 
@@ -235,6 +293,77 @@ const Messages = () => {
       conversation_id: activeConvo.id,
       sender_id: currentUserId,
       content,
+      message_type: "text",
+    });
+
+    setSending(false);
+  };
+
+  // Audio recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        if (blob.size < 500) return; // Too short
+
+        await sendAudioMessage(blob);
+      };
+
+      mediaRecorder.start(100);
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+    } catch {
+      toast.error("Não foi possível acessar o microfone");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const sendAudioMessage = async (blob: Blob) => {
+    if (!activeConvo || !currentUserId) return;
+    setSending(true);
+
+    const fileName = `${currentUserId}/${Date.now()}.webm`;
+    const { error: uploadError } = await supabase.storage
+      .from("audio-messages")
+      .upload(fileName, blob, { contentType: "audio/webm" });
+
+    if (uploadError) {
+      toast.error("Erro ao enviar áudio");
+      setSending(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("audio-messages")
+      .getPublicUrl(fileName);
+
+    await supabase.from("messages").insert({
+      conversation_id: activeConvo.id,
+      sender_id: currentUserId,
+      content: "🎤 Áudio",
+      message_type: "audio",
+      media_url: urlData.publicUrl,
     });
 
     setSending(false);
@@ -259,22 +388,22 @@ const Messages = () => {
     </div>
   );
 
+  const fmtTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+
   // Chat view
   if (activeConvo) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        {/* Chat header */}
         <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur-lg">
           <button onClick={() => setActiveConvo(null)} className="text-foreground">
             <ArrowLeft className="h-6 w-6" />
           </button>
-          <Avatar user={activeConvo.otherUser} size="h-9 w-9" />
-          <div className="min-w-0 flex-1">
+          <button onClick={() => navigate(`/user/${activeConvo.otherUser.id}`)} className="flex items-center gap-3 min-w-0 flex-1">
+            <Avatar user={activeConvo.otherUser} size="h-9 w-9" />
             <p className="text-sm font-semibold truncate">{activeConvo.otherUser.username}</p>
-          </div>
+          </button>
         </header>
 
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
           {messages.map((msg) => {
             const isMe = msg.sender_id === currentUserId;
@@ -287,7 +416,11 @@ const Messages = () => {
                       : "bg-secondary text-foreground rounded-bl-md"
                   }`}
                 >
-                  <p className="break-words">{msg.content}</p>
+                  {msg.message_type === "audio" && msg.media_url ? (
+                    <AudioPlayer url={msg.media_url} />
+                  ) : (
+                    <p className="break-words">{msg.content}</p>
+                  )}
                   <p className={`mt-1 text-[10px] ${isMe ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                     {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ptBR })}
                   </p>
@@ -298,27 +431,50 @@ const Messages = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
         <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Mensagem..."
-              className="flex-1 rounded-full border-border bg-secondary"
-              maxLength={2000}
-            />
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={sendMessage}
-              disabled={!newMessage.trim() || sending}
-              className="text-primary shrink-0"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
-          </div>
+          {isRecording ? (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-destructive animate-pulse" />
+                <span className="text-sm font-medium text-destructive">Gravando {fmtTime(recordingTime)}</span>
+              </div>
+              <Button size="icon" variant="destructive" onClick={stopRecording} className="shrink-0 rounded-full h-10 w-10">
+                <Square className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Mensagem..."
+                className="flex-1 rounded-full border-border bg-secondary"
+                maxLength={2000}
+              />
+              {newMessage.trim() ? (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={sendMessage}
+                  disabled={sending}
+                  className="text-primary shrink-0"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+              ) : (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={startRecording}
+                  disabled={sending}
+                  className="text-primary shrink-0"
+                >
+                  <Mic className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

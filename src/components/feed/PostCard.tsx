@@ -1,5 +1,6 @@
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, X } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +12,7 @@ interface PostCardProps {
 }
 
 const PostCard = ({ post }: PostCardProps) => {
+  const navigate = useNavigate();
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
@@ -117,7 +119,7 @@ const PostCard = ({ post }: PostCardProps) => {
     <article className="border-b border-border">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
+        <button onClick={() => navigate(`/user/${post.user_id}`)} className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-secondary overflow-hidden">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
@@ -131,7 +133,7 @@ const PostCard = ({ post }: PostCardProps) => {
             <p className="text-sm font-semibold">{profile?.username}</p>
             {post.location && <p className="text-[11px] text-muted-foreground">{post.location}</p>}
           </div>
-        </div>
+        </button>
         {post.is_promoted && <span className="text-[10px] font-medium text-muted-foreground">Patrocinado</span>}
         <button className="text-foreground"><MoreHorizontal className="h-5 w-5" /></button>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search as SearchIcon, UserPlus, UserCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { toast } from "sonner";
 import AppLayout from "@/components/layout/AppLayout";
 
 const Explore = () => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
@@ -105,27 +107,29 @@ const Explore = () => {
         <div className="px-4">
           {results.map((user) => (
             <div key={user.id} className="flex items-center gap-3 py-3 border-b border-border">
-              <div className="h-11 w-11 rounded-full bg-secondary overflow-hidden shrink-0">
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
-                    {user.username?.charAt(0)?.toUpperCase()}
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold truncate">{user.username}</p>
-                {user.display_name && (
-                  <p className="text-xs text-muted-foreground truncate">{user.display_name}</p>
-                )}
-              </div>
+              <button onClick={() => navigate(`/user/${user.id}`)} className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="h-11 w-11 rounded-full bg-secondary overflow-hidden shrink-0">
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
+                      {user.username?.charAt(0)?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate text-left">{user.username}</p>
+                  {user.display_name && (
+                    <p className="text-xs text-muted-foreground truncate text-left">{user.display_name}</p>
+                  )}
+                </div>
+              </button>
               {currentUserId && user.id !== currentUserId && (
                 <Button
                   size="sm"
                   variant={followingIds.has(user.id) ? "secondary" : "brand"}
                   disabled={toggling === user.id}
-                  onClick={() => toggleFollow(user.id)}
+                  onClick={(e) => { e.stopPropagation(); toggleFollow(user.id); }}
                   className="gap-1.5 text-xs"
                 >
                   {followingIds.has(user.id) ? (
