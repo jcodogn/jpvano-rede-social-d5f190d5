@@ -16,6 +16,7 @@ import CreatePost from "./pages/CreatePost";
 import Messages from "./pages/Messages";
 import SettingsPage from "./pages/Settings";
 import EditProfile from "./pages/EditProfile";
+import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ const App = () => (
           <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+          <Route path="/user/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
