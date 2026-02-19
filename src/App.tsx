@@ -19,6 +19,7 @@ import EditProfile from "./pages/EditProfile";
 import UserProfile from "./pages/UserProfile";
 import PromotePost from "./pages/PromotePost";
 import Campaigns from "./pages/Campaigns";
+import PromoteSuccess from "./pages/PromoteSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,7 +71,9 @@ const App = () => (
           <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
           <Route path="/user/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
           <Route path="/promote" element={<ProtectedRoute><PromotePost /></ProtectedRoute>} />
+          <Route path="/promote-success" element={<ProtectedRoute><PromoteSuccess /></ProtectedRoute>} />
           <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
