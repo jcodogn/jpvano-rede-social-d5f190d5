@@ -29,14 +29,42 @@ const Feed = () => {
       // Include user's own posts
       const ids = [...followingIds, user.id];
 
-      const { data } = await supabase
+      // Fetch followed posts
+      const { data: followedPosts } = await supabase
         .from("posts")
         .select("*, profiles(username, avatar_url, display_name)")
         .in("user_id", ids)
         .order("created_at", { ascending: false })
         .limit(50);
 
-      setPosts(data || []);
+      // Fetch active promoted posts (not from followed users, to add variety)
+      const { data: promotedPosts } = await supabase
+        .from("posts")
+        .select("*, profiles(username, avatar_url, display_name)")
+        .eq("is_promoted", true)
+        .not("user_id", "in", `(${ids.join(",")})`)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      // Merge: insert a promoted post every 3 regular posts
+      const regular = followedPosts || [];
+      const promoted = promotedPosts || [];
+      const merged: any[] = [];
+      let promoIdx = 0;
+      for (let i = 0; i < regular.length; i++) {
+        merged.push(regular[i]);
+        if ((i + 1) % 3 === 0 && promoIdx < promoted.length) {
+          merged.push(promoted[promoIdx]);
+          promoIdx++;
+        }
+      }
+      // Add remaining promoted posts
+      while (promoIdx < promoted.length) {
+        merged.push(promoted[promoIdx]);
+        promoIdx++;
+      }
+
+      setPosts(merged);
       setLoading(false);
     };
     fetchPosts();
