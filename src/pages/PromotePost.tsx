@@ -43,41 +43,19 @@ const PromotePost = () => {
     if (!selectedPost || !selectedBudget || !userId || submitting) return;
     setSubmitting(true);
 
-    const budget = BUDGET_OPTIONS.find((b) => b.cents === selectedBudget)!;
-    const maxViews = Math.floor(selectedBudget / 1); // 1 centavo por view
+    // Call Stripe Checkout via edge function
+    const { data, error } = await supabase.functions.invoke("create-promotion-checkout", {
+      body: { budget_cents: selectedBudget, post_id: selectedPost },
+    });
 
-    // Create campaign
-    const { data: campaign, error: campErr } = await supabase
-      .from("ad_campaigns")
-      .insert({
-        advertiser_id: userId,
-        post_id: selectedPost,
-        budget_cents: selectedBudget,
-        max_views: maxViews,
-        cost_per_view_cents: 1,
-      })
-      .select()
-      .single();
-
-    if (campErr) {
-      toast.error("Erro ao criar campanha");
+    if (error || !data?.url) {
+      toast.error("Erro ao iniciar pagamento");
       setSubmitting(false);
       return;
     }
 
-    // Create payment record
-    await supabase.from("payments").insert({
-      user_id: userId,
-      campaign_id: campaign.id,
-      amount_cents: selectedBudget,
-      status: "completed",
-    });
-
-    // Mark post as promoted
-    await supabase.from("posts").update({ is_promoted: true }).eq("id", selectedPost);
-
-    toast.success("Post promovido com sucesso! 🚀");
-    navigate("/campaigns");
+    // Redirect to Stripe Checkout
+    window.open(data.url, "_blank");
     setSubmitting(false);
   };
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/layout/AppLayout";
-import { Settings, Grid3X3, Bookmark, Film } from "lucide-react";
+import { Settings, Grid3X3, Bookmark, Film, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -105,6 +105,9 @@ const Profile = () => {
 
         <div className="mt-4 flex gap-2">
           <Button variant="secondary" size="sm" className="flex-1" onClick={() => navigate("/edit-profile")}>Editar perfil</Button>
+          <Button size="sm" className="gradient-brand text-primary-foreground" onClick={() => navigate("/promote")}>
+            <TrendingUp className="h-4 w-4 mr-1" /> Promover
+          </Button>
           <Button variant="secondary" size="sm" onClick={handleLogout}>Sair</Button>
         </div>
       </div>
