@@ -22,6 +22,13 @@ const Notifications = () => {
         .limit(50);
       setNotifications(data || []);
       setLoading(false);
+
+      // Mark all as read
+      await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
     };
     fetchNotifications();
   }, []);

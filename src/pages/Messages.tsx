@@ -109,15 +109,41 @@ const Messages = () => {
 
   // Handle opening a conversation from UserProfile navigation
   useEffect(() => {
-    const state = location.state as { openConvoWith?: string } | null;
-    if (state?.openConvoWith && currentUserId && conversations.length > 0) {
-      const existing = conversations.find((c) => c.otherUser.id === state.openConvoWith);
-      if (existing) {
-        setActiveConvo(existing);
-        // Clear the state
-        window.history.replaceState({}, document.title);
-      }
+    const state = location.state as { openConvoId?: string; openConvoUserId?: string } | null;
+    if (!state?.openConvoId || !currentUserId) return;
+
+    // Clear the state immediately
+    window.history.replaceState({}, document.title);
+
+    const existing = conversations.find((c) => c.id === state.openConvoId);
+    if (existing) {
+      setActiveConvo(existing);
+      return;
     }
+
+    // Conversation may be new, not yet in our list - load it
+    const loadNewConvo = async () => {
+      if (!state.openConvoUserId) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url")
+        .eq("id", state.openConvoUserId)
+        .single();
+
+      if (!profile) return;
+
+      const newConvo: Conversation = {
+        id: state.openConvoId!,
+        otherUser: profile,
+        unread: false,
+      };
+      setConversations((prev) => {
+        if (prev.some((c) => c.id === newConvo.id)) return prev;
+        return [newConvo, ...prev];
+      });
+      setActiveConvo(newConvo);
+    };
+    loadNewConvo();
   }, [location.state, currentUserId, conversations]);
 
   const loadConversations = async (userId: string) => {
