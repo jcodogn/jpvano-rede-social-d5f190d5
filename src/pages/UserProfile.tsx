@@ -24,7 +24,6 @@ const UserProfile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
 
-      // If viewing own profile, redirect
       if (user?.id === userId) {
         navigate("/profile", { replace: true });
         return;
@@ -50,7 +49,6 @@ const UserProfile = () => {
         following: followingRes.count || 0,
       });
 
-      // Check if current user follows this user
       if (user) {
         const { data: followData } = await supabase
           .from("followers")
@@ -81,6 +79,13 @@ const UserProfile = () => {
       setIsFollowing(true);
       setStats((s) => ({ ...s, followers: s.followers + 1 }));
       toast.success("Seguindo!");
+
+      // Create notification for follow
+      await supabase.from("notifications").insert({
+        user_id: userId,
+        actor_id: currentUserId,
+        type: "follow",
+      });
     }
     setToggling(false);
   };
@@ -88,36 +93,17 @@ const UserProfile = () => {
   const startMessage = async () => {
     if (!currentUserId || !userId) return;
 
-    // Check for existing conversation
-    const { data: myConvos } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", currentUserId);
+    // Use the secure database function to create/find conversation
+    const { data, error } = await supabase.rpc("create_conversation", {
+      other_user_id: userId,
+    });
 
-    if (myConvos && myConvos.length > 0) {
-      const convoIds = myConvos.map((c) => c.conversation_id);
-      const { data: shared } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", userId)
-        .in("conversation_id", convoIds);
-
-      if (shared && shared.length > 0) {
-        navigate("/messages", { state: { openConvoWith: userId } });
-        return;
-      }
+    if (error) {
+      toast.error("Erro ao iniciar conversa");
+      return;
     }
 
-    // Create new conversation
-    const { data: convo } = await supabase.from("conversations").insert({}).select("id").single();
-    if (!convo) return;
-
-    await supabase.from("conversation_participants").insert([
-      { conversation_id: convo.id, user_id: currentUserId },
-      { conversation_id: convo.id, user_id: userId },
-    ]);
-
-    navigate("/messages", { state: { openConvoWith: userId } });
+    navigate("/messages", { state: { openConvoId: data, openConvoUserId: userId } });
   };
 
   if (loading) {

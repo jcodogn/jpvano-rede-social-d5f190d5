@@ -78,6 +78,15 @@ const PostCard = ({ post }: PostCardProps) => {
     } else {
       setLiked(true);
       await supabase.from("likes").insert({ post_id: post.id, user_id: currentUserId });
+      // Send notification to post owner
+      if (post.user_id !== currentUserId) {
+        await supabase.from("notifications").insert({
+          user_id: post.user_id,
+          actor_id: currentUserId,
+          type: "like",
+          post_id: post.id,
+        });
+      }
     }
   };
 
@@ -112,6 +121,15 @@ const PostCard = ({ post }: PostCardProps) => {
     setSending(true);
     setNewComment("");
     await supabase.from("comments").insert({ post_id: post.id, user_id: currentUserId, content });
+    // Send notification to post owner
+    if (post.user_id !== currentUserId) {
+      await supabase.from("notifications").insert({
+        user_id: post.user_id,
+        actor_id: currentUserId,
+        type: "comment",
+        post_id: post.id,
+      });
+    }
     setSending(false);
   };
 
