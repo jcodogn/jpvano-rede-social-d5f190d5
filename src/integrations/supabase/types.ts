@@ -551,6 +551,10 @@ export type Database = {
           location: string | null
           media_type: string
           media_urls: string[]
+          spotify_artist_name: string | null
+          spotify_preview_url: string | null
+          spotify_track_id: string | null
+          spotify_track_name: string | null
           user_id: string
         }
         Insert: {
@@ -563,6 +567,10 @@ export type Database = {
           location?: string | null
           media_type?: string
           media_urls?: string[]
+          spotify_artist_name?: string | null
+          spotify_preview_url?: string | null
+          spotify_track_id?: string | null
+          spotify_track_name?: string | null
           user_id: string
         }
         Update: {
@@ -575,6 +583,10 @@ export type Database = {
           location?: string | null
           media_type?: string
           media_urls?: string[]
+          spotify_artist_name?: string | null
+          spotify_preview_url?: string | null
+          spotify_track_id?: string | null
+          spotify_track_name?: string | null
           user_id?: string
         }
         Relationships: [
@@ -727,6 +739,10 @@ export type Database = {
           id: string
           media_type: string | null
           media_url: string
+          spotify_artist_name: string | null
+          spotify_preview_url: string | null
+          spotify_track_id: string | null
+          spotify_track_name: string | null
           user_id: string
         }
         Insert: {
@@ -735,6 +751,10 @@ export type Database = {
           id?: string
           media_type?: string | null
           media_url: string
+          spotify_artist_name?: string | null
+          spotify_preview_url?: string | null
+          spotify_track_id?: string | null
+          spotify_track_name?: string | null
           user_id: string
         }
         Update: {
@@ -743,6 +763,10 @@ export type Database = {
           id?: string
           media_type?: string | null
           media_url?: string
+          spotify_artist_name?: string | null
+          spotify_preview_url?: string | null
+          spotify_track_id?: string | null
+          spotify_track_name?: string | null
           user_id?: string
         }
         Relationships: [
