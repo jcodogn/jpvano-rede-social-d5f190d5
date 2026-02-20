@@ -1,5 +1,5 @@
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, X } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, X, Music } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -22,8 +22,55 @@ const PostCard = ({ post }: PostCardProps) => {
   const [newComment, setNewComment] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [viewTracked, setViewTracked] = useState(false);
   const profile = post.profiles;
   const inputRef = useRef<HTMLInputElement>(null);
+  const articleRef = useRef<HTMLDivElement>(null);
+
+  // Track promoted post views with IntersectionObserver
+  useEffect(() => {
+    if (!post.is_promoted || viewTracked || !currentUserId) return;
+    const el = articleRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !viewTracked) {
+          setViewTracked(true);
+          // Find campaign and register delivery
+          (async () => {
+            const { data: campaign } = await supabase
+              .from("ad_campaigns")
+              .select("id")
+              .eq("post_id", post.id)
+              .eq("status", "active")
+              .maybeSingle();
+
+            if (campaign) {
+              // Check if already viewed by this user
+              const { data: existing } = await supabase
+                .from("ad_deliveries")
+                .select("id")
+                .eq("campaign_id", campaign.id)
+                .eq("viewer_id", currentUserId)
+                .maybeSingle();
+
+              if (!existing) {
+                await supabase.from("ad_deliveries").insert({
+                  campaign_id: campaign.id,
+                  viewer_id: currentUserId,
+                });
+              }
+            }
+          })();
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [post.is_promoted, post.id, currentUserId, viewTracked]);
 
   // Init: check if user liked/saved this post
   useEffect(() => {
@@ -134,7 +181,7 @@ const PostCard = ({ post }: PostCardProps) => {
   };
 
   return (
-    <article className="border-b border-border">
+    <article ref={articleRef} className="border-b border-border">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
         <button onClick={() => navigate(`/user/${post.user_id}`)} className="flex items-center gap-3">
@@ -164,6 +211,17 @@ const PostCard = ({ post }: PostCardProps) => {
           ) : (
             <img src={post.media_urls[0]} alt="" className="h-full w-full object-cover" loading="lazy" />
           )}
+        </div>
+      )}
+
+      {/* Spotify Track */}
+      {post.spotify_track_name && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-secondary/50">
+          <Music className="h-4 w-4 text-primary shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium truncate">{post.spotify_track_name}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{post.spotify_artist_name}</p>
+          </div>
         </div>
       )}
 
