@@ -4,9 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Image, Film, MapPin, X } from "lucide-react";
+import { ArrowLeft, Image, Film, MapPin, X, Music, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import AppLayout from "@/components/layout/AppLayout";
+
+interface SpotifyTrack {
+  id: string;
+  name: string;
+  artist: string;
+  album?: string;
+  albumImage?: string;
+  previewUrl?: string;
+  externalUrl?: string;
+}
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -17,6 +27,13 @@ const CreatePost = () => {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Spotify state
+  const [showMusicSearch, setShowMusicSearch] = useState(false);
+  const [musicQuery, setMusicQuery] = useState("");
+  const [musicResults, setMusicResults] = useState<SpotifyTrack[]>([]);
+  const [searchingMusic, setSearchingMusic] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -36,6 +53,22 @@ const CreatePost = () => {
     setFile(selected);
     setPreview(URL.createObjectURL(selected));
     if (isVideo) setMediaType("video");
+  };
+
+  const searchMusic = async () => {
+    if (!musicQuery.trim()) return;
+    setSearchingMusic(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("spotify-search", {
+        body: { query: musicQuery.trim() },
+      });
+      if (error) throw error;
+      setMusicResults(data?.tracks || []);
+    } catch {
+      toast.error("Erro ao buscar músicas");
+    } finally {
+      setSearchingMusic(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -68,6 +101,10 @@ const CreatePost = () => {
         media_type: mediaType,
         caption: caption || null,
         location: location || null,
+        spotify_track_id: selectedTrack?.id || null,
+        spotify_track_name: selectedTrack?.name || null,
+        spotify_artist_name: selectedTrack?.artist || null,
+        spotify_preview_url: selectedTrack?.previewUrl || null,
       });
 
       if (postError) throw postError;
@@ -168,6 +205,73 @@ const CreatePost = () => {
             className="h-11 border-border bg-secondary pl-10 placeholder:text-muted-foreground"
           />
         </div>
+
+        {/* Spotify Music */}
+        {selectedTrack ? (
+          <div className="flex items-center gap-3 rounded-xl bg-secondary p-3">
+            {selectedTrack.albumImage && (
+              <img src={selectedTrack.albumImage} alt="" className="h-10 w-10 rounded-lg object-cover" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{selectedTrack.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{selectedTrack.artist}</p>
+            </div>
+            <button onClick={() => setSelectedTrack(null)} className="text-muted-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowMusicSearch(!showMusicSearch)}
+            className="flex w-full items-center gap-3 rounded-xl bg-secondary p-3 text-left"
+          >
+            <Music className="h-5 w-5 text-primary" />
+            <span className="text-sm text-muted-foreground">Adicionar música do Spotify</span>
+          </button>
+        )}
+
+        {showMusicSearch && !selectedTrack && (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar música..."
+                  value={musicQuery}
+                  onChange={(e) => setMusicQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") searchMusic(); }}
+                  className="h-10 bg-background border-border pl-10"
+                />
+              </div>
+              <Button variant="secondary" size="sm" onClick={searchMusic} disabled={searchingMusic} className="h-10 px-4">
+                {searchingMusic ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
+              </Button>
+            </div>
+
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {musicResults.map((track) => (
+                <button
+                  key={track.id}
+                  onClick={() => {
+                    setSelectedTrack(track);
+                    setShowMusicSearch(false);
+                    setMusicResults([]);
+                    setMusicQuery("");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-background transition-colors"
+                >
+                  {track.albumImage && (
+                    <img src={track.albumImage} alt="" className="h-9 w-9 rounded object-cover" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{track.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );
