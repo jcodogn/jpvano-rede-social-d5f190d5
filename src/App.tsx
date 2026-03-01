@@ -20,8 +20,6 @@ import UserProfile from "./pages/UserProfile";
 import PromotePost from "./pages/PromotePost";
 import Campaigns from "./pages/Campaigns";
 import PromoteSuccess from "./pages/PromoteSuccess";
-import Reels from "./pages/Reels";
-import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,8 +73,7 @@ const App = () => (
           <Route path="/promote" element={<ProtectedRoute><PromotePost /></ProtectedRoute>} />
           <Route path="/promote-success" element={<ProtectedRoute><PromoteSuccess /></ProtectedRoute>} />
           <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
-          <Route path="/reels" element={<ProtectedRoute><Reels /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+          <Route path="*" element={<NotFound />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

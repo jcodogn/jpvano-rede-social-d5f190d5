@@ -34,8 +34,6 @@ const CreatePost = () => {
   const [musicResults, setMusicResults] = useState<SpotifyTrack[]>([]);
   const [searchingMusic, setSearchingMusic] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
-  const [suggestedHashtags, setSuggestedHashtags] = useState<string[]>([]);
-  const [loadingHashtags, setLoadingHashtags] = useState(false);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -73,42 +71,10 @@ const CreatePost = () => {
     }
   };
 
-  const suggestHashtags = async () => {
-    if (!caption.trim()) { toast.error("Escreva uma legenda primeiro"); return; }
-    setLoadingHashtags(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("ai-moderate", {
-        body: { text: caption, type: "hashtags" },
-      });
-      if (error) throw error;
-      const tags = Array.isArray(data?.result) ? data.result : [];
-      setSuggestedHashtags(tags);
-    } catch {
-      toast.error("Erro ao sugerir hashtags");
-    } finally {
-      setLoadingHashtags(false);
-    }
-  };
-
   const handleCreate = async () => {
     if (!file) {
       toast.error("Selecione uma foto ou vídeo primeiro");
       return;
-    }
-
-    // AI content moderation
-    if (caption.trim()) {
-      try {
-        const { data: modData } = await supabase.functions.invoke("ai-moderate", {
-          body: { text: caption, type: "moderation" },
-        });
-        if (modData?.result && typeof modData.result === "object" && !modData.result.safe) {
-          toast.error(`Conteúdo bloqueado: ${modData.result.reason}`);
-          return;
-        }
-      } catch {
-        // If moderation fails, allow post to proceed
-      }
     }
 
     setLoading(true);
@@ -229,27 +195,6 @@ const CreatePost = () => {
           onChange={(e) => setCaption(e.target.value)}
           className="min-h-[80px] border-border bg-secondary placeholder:text-muted-foreground resize-none"
         />
-
-        {/* AI Hashtag Suggestions */}
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={suggestHashtags} disabled={loadingHashtags || !caption.trim()}>
-            {loadingHashtags ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : "🤖"}
-            {loadingHashtags ? "Gerando..." : "Sugerir Hashtags"}
-          </Button>
-        </div>
-        {suggestedHashtags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {suggestedHashtags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setCaption((prev) => prev + " " + tag)}
-                className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        )}
 
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
