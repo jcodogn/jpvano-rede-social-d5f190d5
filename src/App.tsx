@@ -21,6 +21,7 @@ import PromotePost from "./pages/PromotePost";
 import Campaigns from "./pages/Campaigns";
 import PromoteSuccess from "./pages/PromoteSuccess";
 import NotFound from "./pages/NotFound";
+import IncomingCallListener from "./components/calls/IncomingCallListener";
 
 const queryClient = new QueryClient();
 
@@ -48,7 +49,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  return user ? <>{children}</> : <Navigate to="/" replace />;
+  return user ? (
+    <>
+      <IncomingCallListener currentUserId={user.id} />
+      {children}
+    </>
+  ) : <Navigate to="/" replace />;
 };
 
 const App = () => (
