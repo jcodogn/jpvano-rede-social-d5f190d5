@@ -1,10 +1,10 @@
-import { Home, Search, PlusSquare, Heart, User } from "lucide-react";
+import { Home, Search, PlusSquare, Heart, User, Film } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useNotificationCount } from "@/hooks/useNotificationCount";
 
 const tabs = [
   { icon: Home, path: "/feed", label: "Feed" },
-  { icon: Search, path: "/explore", label: "Explorar" },
+  { icon: Film, path: "/reels", label: "Reels" },
   { icon: PlusSquare, path: "/create", label: "Criar" },
   { icon: Heart, path: "/notifications", label: "Notificações" },
   { icon: User, path: "/profile", label: "Perfil" },
