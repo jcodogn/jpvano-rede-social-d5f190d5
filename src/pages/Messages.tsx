@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Send, Search, Mic, Square, Play, Pause } from "lucide-react";
+import { ArrowLeft, Edit, Send, Search, Mic, Square, Play, Pause, Phone, Video } from "lucide-react";
+import CallModal from "@/components/calls/CallModal";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -84,6 +85,7 @@ const Messages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [activeCall, setActiveCall] = useState<{ type: "voice" | "video" } | null>(null);
 
   // Audio recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -428,7 +430,31 @@ const Messages = () => {
             <Avatar user={activeConvo.otherUser} size="h-9 w-9" />
             <p className="text-sm font-semibold truncate">{activeConvo.otherUser.username}</p>
           </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setActiveCall({ type: "voice" })}
+              className="p-2 text-foreground hover:text-primary transition-colors"
+            >
+              <Phone className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setActiveCall({ type: "video" })}
+              className="p-2 text-foreground hover:text-primary transition-colors"
+            >
+              <Video className="h-5 w-5" />
+            </button>
+          </div>
         </header>
+
+        {activeCall && currentUserId && (
+          <CallModal
+            conversationId={activeConvo.id}
+            currentUserId={currentUserId}
+            otherUser={activeConvo.otherUser}
+            callType={activeCall.type}
+            onClose={() => setActiveCall(null)}
+          />
+        )}
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
           {messages.map((msg) => {
