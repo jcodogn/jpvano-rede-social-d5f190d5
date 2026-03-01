@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.spotify-search]
 verify_jwt = false
+
+[functions.ai-moderate]
+verify_jwt = false
