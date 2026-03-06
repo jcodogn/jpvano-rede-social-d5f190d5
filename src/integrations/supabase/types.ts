@@ -139,6 +139,27 @@ export type Database = {
           },
         ]
       }
+      admin_balance: {
+        Row: {
+          admin_id: string
+          balance_cents: number
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          admin_id: string
+          balance_cents?: number
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          admin_id?: string
+          balance_cents?: number
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       blocked_users: {
         Row: {
           blocked_id: string
@@ -601,6 +622,7 @@ export type Database = {
           comments_count: number | null
           created_at: string | null
           id: string
+          is_pinned: boolean | null
           is_promoted: boolean | null
           likes_count: number | null
           location: string | null
@@ -617,6 +639,7 @@ export type Database = {
           comments_count?: number | null
           created_at?: string | null
           id?: string
+          is_pinned?: boolean | null
           is_promoted?: boolean | null
           likes_count?: number | null
           location?: string | null
@@ -633,6 +656,7 @@ export type Database = {
           comments_count?: number | null
           created_at?: string | null
           id?: string
+          is_pinned?: boolean | null
           is_promoted?: boolean | null
           likes_count?: number | null
           location?: string | null
@@ -834,15 +858,130 @@ export type Database = {
           },
         ]
       }
+      story_highlight_items: {
+        Row: {
+          created_at: string | null
+          highlight_id: string
+          id: string
+          story_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          highlight_id: string
+          id?: string
+          story_id: string
+        }
+        Update: {
+          created_at?: string | null
+          highlight_id?: string
+          id?: string
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_highlight_items_highlight_id_fkey"
+            columns: ["highlight_id"]
+            isOneToOne: false
+            referencedRelation: "story_highlights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_highlight_items_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_highlights: {
+        Row: {
+          cover_url: string | null
+          created_at: string | null
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          title?: string
+          user_id: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      withdrawal_requests: {
+        Row: {
+          admin_id: string
+          amount_cents: number
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          status: string
+          stripe_transfer_id: string | null
+        }
+        Insert: {
+          admin_id: string
+          amount_cents: number
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string
+          stripe_transfer_id?: string | null
+        }
+        Update: {
+          admin_id?: string
+          amount_cents?: number
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string
+          stripe_transfer_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       create_conversation: { Args: { other_user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "creator" | "business" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -969,6 +1108,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "creator", "business", "user"],
+    },
   },
 } as const
