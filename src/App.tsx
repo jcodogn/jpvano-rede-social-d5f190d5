@@ -20,6 +20,9 @@ import UserProfile from "./pages/UserProfile";
 import PromotePost from "./pages/PromotePost";
 import Campaigns from "./pages/Campaigns";
 import PromoteSuccess from "./pages/PromoteSuccess";
+import Reels from "./pages/Reels";
+import Insights from "./pages/Insights";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import IncomingCallListener from "./components/calls/IncomingCallListener";
 
@@ -79,7 +82,9 @@ const App = () => (
           <Route path="/promote" element={<ProtectedRoute><PromotePost /></ProtectedRoute>} />
           <Route path="/promote-success" element={<ProtectedRoute><PromoteSuccess /></ProtectedRoute>} />
           <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="/reels" element={<ProtectedRoute><Reels /></ProtectedRoute>} />
+          <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -1,11 +1,13 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, User, Bell, Shield, Lock, HelpCircle, LogOut } from "lucide-react";
+import { ArrowLeft, ChevronRight, User, Bell, Shield, Lock, HelpCircle, LogOut, BarChart3, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/layout/AppLayout";
 
 const settingsItems = [
   { icon: User, label: "Editar perfil", path: "/edit-profile" },
+  { icon: BarChart3, label: "Insights", path: "/insights" },
   { icon: Bell, label: "Notificações", path: "/notifications" },
+  { icon: ShieldCheck, label: "Painel Admin", path: "/admin" },
   { icon: Shield, label: "Privacidade", path: "#" },
   { icon: Lock, label: "Segurança", path: "#" },
   { icon: HelpCircle, label: "Ajuda", path: "#" },
