@@ -1,4 +1,4 @@
-import { Home, Search, PlusSquare, Heart, User } from "lucide-react";
+import { Home, Search, PlusSquare, Film, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useNotificationCount } from "@/hooks/useNotificationCount";
 
@@ -6,7 +6,7 @@ const tabs = [
   { icon: Home, path: "/feed", label: "Feed" },
   { icon: Search, path: "/explore", label: "Explorar" },
   { icon: PlusSquare, path: "/create", label: "Criar" },
-  { icon: Heart, path: "/notifications", label: "Notificações" },
+  { icon: Film, path: "/reels", label: "Reels" },
   { icon: User, path: "/profile", label: "Perfil" },
 ];
 
@@ -21,7 +21,6 @@ const BottomNav = () => {
         {tabs.map(({ icon: Icon, path, label }) => {
           const isActive = location.pathname === path;
           const isCreate = path === "/create";
-          const isNotif = path === "/notifications";
 
           return (
             <button
@@ -37,14 +36,7 @@ const BottomNav = () => {
                   <Icon className="h-5 w-5 text-primary-foreground" />
                 </div>
               ) : (
-                <div className="relative">
-                  <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 1.5} />
-                  {isNotif && count > 0 && (
-                    <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                      {count > 99 ? "99+" : count}
-                    </span>
-                  )}
-                </div>
+                <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 1.5} />
               )}
               {!isCreate && (
                 <span className="text-[10px] font-medium">{label}</span>
