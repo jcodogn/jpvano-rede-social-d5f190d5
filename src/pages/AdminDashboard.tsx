@@ -118,13 +118,28 @@ const AdminDashboard = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase.from("withdrawal_requests").insert({
+    // Create withdrawal request
+    const { data: withdrawal, error } = await supabase.from("withdrawal_requests").insert({
       admin_id: user.id,
       amount_cents: cents,
       status: "pending",
+    }).select().single();
+
+    if (error || !withdrawal) { toast.error("Erro ao solicitar saque"); return; }
+
+    // Process via Stripe
+    toast.loading("Processando saque via Stripe...", { id: "withdrawal" });
+
+    const { data: result, error: fnError } = await supabase.functions.invoke("process-withdrawal", {
+      body: { withdrawal_id: withdrawal.id },
     });
 
-    if (error) { toast.error("Erro ao solicitar saque"); return; }
+    if (fnError || result?.error) {
+      toast.error(result?.error || "Erro ao processar saque", { id: "withdrawal" });
+      // Revert withdrawal status
+      await supabase.from("withdrawal_requests").update({ status: "failed" }).eq("id", withdrawal.id);
+      return;
+    }
 
     // Debit balance
     await supabase
@@ -134,7 +149,7 @@ const AdminDashboard = () => {
 
     setBalance(balance - cents);
     setWithdrawAmount("");
-    toast.success("Saque solicitado com sucesso!");
+    toast.success("Saque processado com sucesso via Stripe!", { id: "withdrawal" });
   };
 
   const formatCurrency = (cents: number) => {
