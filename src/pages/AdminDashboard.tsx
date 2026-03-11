@@ -19,6 +19,7 @@ const AdminDashboard = () => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "reports" | "finance">("overview");
 
   useEffect(() => {
