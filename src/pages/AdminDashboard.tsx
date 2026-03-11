@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/layout/AppLayout";
-import { ArrowLeft, Users, Image, Megaphone, DollarSign, Shield, TrendingUp, Wallet, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Users, Image, Megaphone, DollarSign, Shield, TrendingUp, Wallet, AlertTriangle, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const AdminDashboard = () => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "reports" | "finance">("overview");
 
   useEffect(() => {
@@ -41,7 +43,7 @@ const AdminDashboard = () => {
       setIsAdmin(true);
 
       // Fetch real stats in parallel
-      const [usersRes, postsRes, campaignsRes, paymentsRes, balanceRes, recentUsersRes, reportsRes] = await Promise.all([
+      const [usersRes, postsRes, campaignsRes, paymentsRes, balanceRes, recentUsersRes, reportsRes, withdrawalsRes] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("posts").select("id", { count: "exact", head: true }),
         supabase.from("ad_campaigns").select("id", { count: "exact", head: true }).eq("status", "active"),
@@ -49,6 +51,7 @@ const AdminDashboard = () => {
         supabase.from("admin_balance").select("*").eq("admin_id", user.id).maybeSingle(),
         supabase.from("profiles").select("id, username, display_name, avatar_url, created_at").order("created_at", { ascending: false }).limit(20),
         supabase.from("reports").select("*, profiles:reporter_id(username)").order("created_at", { ascending: false }).limit(20),
+        supabase.from("withdrawal_requests").select("*").eq("admin_id", user.id).order("created_at", { ascending: false }).limit(20),
       ]);
 
       const totalRevenue = (paymentsRes.data || []).reduce((sum: number, p: any) => sum + p.amount_cents, 0);
@@ -78,6 +81,7 @@ const AdminDashboard = () => {
 
       setRecentUsers(recentUsersRes.data || []);
       setReports(reportsRes.data || []);
+      setWithdrawals(withdrawalsRes.data || []);
       setLoading(false);
     };
     init();
@@ -331,6 +335,71 @@ const AdminDashboard = () => {
                   <span className="font-semibold">{stats.campaigns}</span>
                 </div>
               </div>
+            </div>
+
+            {/* Withdrawal History */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="font-display font-semibold mb-3 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" /> Histórico de Saques
+              </h3>
+              {withdrawals.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Nenhum saque realizado</p>
+              ) : (
+                <div className="space-y-3">
+                  {withdrawals.map((w: any) => {
+                    const createdAt = new Date(w.created_at);
+                    const estimatedArrival = new Date(createdAt);
+                    // Stripe Brazil: automatic payouts typically D+2 business days
+                    estimatedArrival.setDate(estimatedArrival.getDate() + 2);
+                    // Skip weekends
+                    if (estimatedArrival.getDay() === 0) estimatedArrival.setDate(estimatedArrival.getDate() + 1);
+                    if (estimatedArrival.getDay() === 6) estimatedArrival.setDate(estimatedArrival.getDate() + 2);
+
+                    const statusConfig = {
+                      pending: { icon: Loader2, color: "bg-yellow-500/10 text-yellow-600", label: "Pendente", iconClass: "animate-spin" },
+                      completed: { icon: CheckCircle, color: "bg-green-500/10 text-green-600", label: "Concluído", iconClass: "" },
+                      failed: { icon: XCircle, color: "bg-destructive/10 text-destructive", label: "Falhou", iconClass: "" },
+                    }[w.status] || { icon: Clock, color: "bg-muted text-muted-foreground", label: w.status, iconClass: "" };
+
+                    const StatusIcon = statusConfig.icon;
+
+                    return (
+                      <div key={w.id} className="rounded-lg border border-border p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-base font-bold">{formatCurrency(w.amount_cents)}</span>
+                          <Badge variant="outline" className={`${statusConfig.color} border-0 text-xs`}>
+                            <StatusIcon className={`h-3 w-3 mr-1 ${statusConfig.iconClass}`} />
+                            {statusConfig.label}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex justify-between">
+                            <span>Solicitado em</span>
+                            <span>{createdAt.toLocaleDateString("pt-BR")} às {createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                          </div>
+                          {w.status === "completed" && w.completed_at ? (
+                            <div className="flex justify-between">
+                              <span>Concluído em</span>
+                              <span>{new Date(w.completed_at).toLocaleDateString("pt-BR")}</span>
+                            </div>
+                          ) : w.status === "pending" ? (
+                            <div className="flex justify-between text-primary">
+                              <span>Previsão de chegada</span>
+                              <span className="font-medium">{estimatedArrival.toLocaleDateString("pt-BR")}</span>
+                            </div>
+                          ) : null}
+                          {w.stripe_transfer_id && (
+                            <div className="flex justify-between">
+                              <span>ID</span>
+                              <span className="font-mono text-[10px]">{w.stripe_transfer_id}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
