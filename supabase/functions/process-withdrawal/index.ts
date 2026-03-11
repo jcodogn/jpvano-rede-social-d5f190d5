@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -37,10 +36,6 @@ serve(async (req) => {
     const { withdrawal_id } = await req.json();
     if (!withdrawal_id) throw new Error("withdrawal_id required");
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil",
-    });
-
     // Get withdrawal request using service role to bypass RLS
     const serviceClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -57,31 +52,21 @@ serve(async (req) => {
 
     if (wErr || !withdrawal) throw new Error("Withdrawal not found or already processed");
 
-    // Create a Stripe payout (requires Stripe account to have balance)
-    // Using transfer to connected account or payout depending on setup
-    const amountInCents = withdrawal.amount_cents;
-
-    const payout = await stripe.payouts.create({
-      amount: amountInCents,
-      currency: "brl",
-      description: `Admin withdrawal - ${user.email}`,
-      metadata: {
-        withdrawal_id,
-        admin_id: user.id,
-      },
-    });
+    // In Brazil, Stripe requires automatic payouts.
+    // We record the withdrawal as approved and Stripe's automatic payout schedule handles the transfer.
+    const approvalId = `approved_${Date.now()}`;
 
     // Update withdrawal status
     await serviceClient
       .from("withdrawal_requests")
       .update({
         status: "completed",
-        stripe_transfer_id: payout.id,
+        stripe_transfer_id: approvalId,
         completed_at: new Date().toISOString(),
       })
       .eq("id", withdrawal_id);
 
-    return new Response(JSON.stringify({ success: true, payout_id: payout.id }), {
+    return new Response(JSON.stringify({ success: true, approval_id: approvalId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
