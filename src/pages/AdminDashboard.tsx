@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/layout/AppLayout";
-import { ArrowLeft, Users, Image, Megaphone, DollarSign, Shield, TrendingUp, Wallet, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Users, Image, Megaphone, DollarSign, Shield, TrendingUp, Wallet, AlertTriangle, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
