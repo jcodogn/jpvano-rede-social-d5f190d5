@@ -43,7 +43,7 @@ const AdminDashboard = () => {
       setIsAdmin(true);
 
       // Fetch real stats in parallel
-      const [usersRes, postsRes, campaignsRes, paymentsRes, balanceRes, recentUsersRes, reportsRes] = await Promise.all([
+      const [usersRes, postsRes, campaignsRes, paymentsRes, balanceRes, recentUsersRes, reportsRes, withdrawalsRes] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("posts").select("id", { count: "exact", head: true }),
         supabase.from("ad_campaigns").select("id", { count: "exact", head: true }).eq("status", "active"),
@@ -51,6 +51,7 @@ const AdminDashboard = () => {
         supabase.from("admin_balance").select("*").eq("admin_id", user.id).maybeSingle(),
         supabase.from("profiles").select("id, username, display_name, avatar_url, created_at").order("created_at", { ascending: false }).limit(20),
         supabase.from("reports").select("*, profiles:reporter_id(username)").order("created_at", { ascending: false }).limit(20),
+        supabase.from("withdrawal_requests").select("*").eq("admin_id", user.id).order("created_at", { ascending: false }).limit(20),
       ]);
 
       const totalRevenue = (paymentsRes.data || []).reduce((sum: number, p: any) => sum + p.amount_cents, 0);
