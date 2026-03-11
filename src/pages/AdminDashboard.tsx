@@ -81,6 +81,7 @@ const AdminDashboard = () => {
 
       setRecentUsers(recentUsersRes.data || []);
       setReports(reportsRes.data || []);
+      setWithdrawals(withdrawalsRes.data || []);
       setLoading(false);
     };
     init();
